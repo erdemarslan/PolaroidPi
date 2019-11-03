@@ -1,36 +1,53 @@
 #!/usr/bin/env python2
 # -*- coding: utf-8 -*-
 from __future__ import print_function
-import gpiozero
+from gpiozero import LED, Button
 from picamera import PiCamera
 from datetime import datetime
+from subprocess import check_call
 from signal import pause
 from PIL import Image
 from Adafruit_Thermal import *
 import os
 
 # Tanımlamalar
-button = gpiozero.Button("GPIO17")
-led = gpiozero.LED("GPIO2")
+button = Button("GPIO2", hold_time=3)
+
+ledR = LED("GPIO17")
+ledG = LED("GPIO27")
+ledB = LED("GPIO22")
+
 
 printer = Adafruit_Thermal("/dev/serial0", 9600, timeout=5)
 
-# Açık olan (tabi açıksa) ledi söndürelim
-led.off()
 
-# Resim Çekmece - Çekilemezse ledi söndürür! O da hata döndürür!
-def captureImage(image_name):
+# Fonksiyonları burada belirleyelim!
+def shutdownPi():
+    # Raspberry Pi yi kapatır. Fişi çekmeyi unutmayın!
+    print("Sistem kapanıyor...")
+    check_call(['sudo', 'poweroff'])
+
+def takePic(image_name):
+    #Fotoğraf çeker ve yazıcıya gönderir.
     try:
+        ledB.on() # mavi ledi yakalım
         with PiCamera() as camera:
-            camera.resolution = (800, 600)
+            print("Fotoğraf çekimi başlıyor")
+            camera.resolution = (512, 384)
             camera.rotation = 90
-            camera.capture('./images/%s' % image_name, resize = (384, 512))
+            camera.color_effects = (128, 128) # camera black & white
+            camera.capture('./images/%s' % image_name)
+            print("Fotoğraf çekimi bitti")
     except:
-        led.off()
-        
-def printAll(img):
+        ledB.off()
+        print("Fotoğraf çekilemedi!")
+
+
+def printPic(img):
     try:
         # Printer header
+        ledR.blink()
+        print("Yazdırma işlemi başlıyor...")
         header = Image.open("./src/printer_header.png")
         printer.printImage(header, LaaT=True)
         printer.feed(1)
@@ -41,40 +58,55 @@ def printAll(img):
         printer.println(simdi)
         printer.feed(2)
         printer.setDefault()
-        
+        print("Yazdırma işlemi sona erdi")
+        ledR.off()
     except:
         print("Printer yazmada sorun yaşadı!")
+        ledR.off()
 
-print("Sistem açıldı!")
 
-while True:
-    # LED sönükken düğmeye basılırsa... (çalışmaya uygunken)
-    if led.value == 0 and button.is_pressed:
-        # Ledi yakalım
-        led.on()
-        # Resmin ismini belirleyelim!
+
+
+# Açık olan (tabi açıksa) ledi söndürelim
+ledR.off()
+ledG.off()
+ledB.off()
+
+
+def takeNPrint():
+    # Fotoğraf çekelim ve yazdıralım
+    if ledG.value == 1:
+        ledG.off()
         stamp = datetime.now().strftime("%d%m%Y%H%M%S")
         image_name = "img_%s.png" % stamp
-        # resmi çek...
-        captureImage(image_name)
-        # resim başarılı bir biçimde çekilirse led yanık kalacak. yazdırmaya çalışalım
-        if led.value == 1:
-            # Devam edelim foto çekilmiş!
-            led.blink()
-            # haydi print edelim
-            with Image.open("./images/%s" % image_name).convert('LA') as img:
-                printAll(img)
-            
-            # hadi resmi silelim! Hafızayı doldurmasın!
+        takePic(image_name)
+
+        if ledB.value == 1:
+            # fotoğraf çekilmiş hadi devam edelim
+            # önce ledi kapatalım
+            ledB.off()
+
+            # fotoğrafı yazıcıya gönderelim
+            with Image.open("./images/%s" % image_name) as img:
+                printPic(img)
+
+            print("Fotoğraf siliniyor")
             try:
                 os.remove("./images/%s" % image_name)
-                print("Resim silindi!")
+                print("Fotoğraf silindi")
             except:
-                print("Resim silinemedi!")
-            
-            led.off()
-            print("Fotoğraf çekildi ve basıldı!")
-            
-        else:
-            print("Fotoğraf çekilemedi!")
-        
+                print("Fotoğraf sişlinemedi. Senin canın sağolsun")
+
+            ledG.on()
+
+
+
+
+print("Sistem başladı...")
+ledG.on()
+
+# Buton davranışlarını belirleyelim!
+button.when_held = shutdownPi
+button.when_released = takeNPrint
+# Programı burada durdur!
+pause()
