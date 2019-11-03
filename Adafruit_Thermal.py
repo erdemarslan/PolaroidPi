@@ -51,7 +51,7 @@ class Adafruit_Thermal(Serial):
     lineSpacing     =     8
     barcodeHeight   =    50
     printMode       =     0
-    defaultHeatTime =   120
+    defaultHeatTime =   200
     firmwareVersion =   268
     writeToStdout   = False
 
@@ -229,9 +229,9 @@ class Adafruit_Thermal(Serial):
         self.writeBytes(
           27,       # Esc
           55,       # 7 (print settings)
-          11,       # Heat dots
+          22,       # Heat dots
           heatTime,
-          40)       # Heat interval
+          80)       # Heat interval
 
     def reset(self):
         self.writeBytes(27, 64) # Esc @ = init command
