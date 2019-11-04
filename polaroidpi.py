@@ -33,10 +33,8 @@ def takePic(image_name):
         ledB.on() # mavi ledi yakalım
         with PiCamera() as camera:
             print("Fotoğraf çekimi başlıyor")
-            camera.resolution = (512, 384)
             camera.rotation = 90
-            camera.color_effects = (128, 128) # camera black & white
-            camera.capture('./images/%s' % image_name)
+            camera.capture('./images/%s' % image_name, resize=(384, 512))
             print("Fotoğraf çekimi bitti")
     except:
         ledB.off()
@@ -49,6 +47,7 @@ def printPic(img):
         ledR.blink()
         print("Yazdırma işlemi başlıyor...")
         header = Image.open("./src/printer_header.png")
+        header = header.convert('1')
         printer.printImage(header, LaaT=True)
         printer.feed(1)
         printer.printImage(img, LaaT=True)
@@ -88,6 +87,8 @@ def takeNPrint():
 
             # fotoğrafı yazıcıya gönderelim
             with Image.open("./images/%s" % image_name) as img:
+                img = img.convert('1')
+                img.save("./images/gray_image.png")
                 printPic(img)
 
             print("Fotoğraf siliniyor")
