@@ -1,0 +1,8 @@
+python-gpiozero
+python3-gpiozero
+libcups2-dev
+libcupsimage2-dev
+git
+build-essential
+cups
+system-config-printer
